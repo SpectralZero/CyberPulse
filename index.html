@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CyberPulse — Real-Time Threat Intelligence Dashboard</title>
+  <meta name="description" content="Free, real-time IT security news aggregator for Red &amp; Blue teams. CVEs, exploits, tools, advisories from 14+ sources." />
+  <meta name="keywords" content="cybersecurity, threat intelligence, CVE, exploit, hacking tools, CISA, security news" />
+  <meta name="author" content="CyberPulse" />
+  <meta name="theme-color" content="#060610" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ============================================ -->
+  <!-- PARTICLE CANVAS BACKGROUND                   -->
+  <!-- ============================================ -->
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- ============================================ -->
+  <!-- MAIN APPLICATION                             -->
+  <!-- ============================================ -->
+  <div class="app" id="app">
+
+    <!-- HEADER -->
+    <header class="header" id="header">
+      <div class="header__brand">
+        <div class="header__logo">
+          <i data-lucide="radar" class="header__logo-icon"></i>
+        </div>
+        <h1 class="header__title">CYBER<span class="accent-text">PULSE</span></h1>
+        <div class="live-badge" id="live-badge">
+          <span class="live-badge__dot"></span>
+          <span class="live-badge__text">LIVE</span>
+        </div>
+      </div>
+
+      <div class="header__search">
+        <i data-lucide="search" class="header__search-icon"></i>
+        <input type="text" id="search-input" class="header__search-input" placeholder="Search threats, CVEs, tools..." autocomplete="off" />
+        <kbd class="header__search-kbd">/</kbd>
+      </div>
+
+      <div class="header__actions">
+        <button class="icon-btn" id="btn-refresh" title="Refresh feeds (R)">
+          <i data-lucide="refresh-cw"></i>
+        </button>
+        <button class="icon-btn" id="btn-bookmarks" title="Bookmarks">
+          <i data-lucide="bookmark"></i>
+          <span class="icon-btn__badge" id="bookmark-count" style="display:none;">0</span>
+        </button>
+        <button class="icon-btn" id="btn-notifications" title="Notifications">
+          <i data-lucide="bell"></i>
+        </button>
+        <button class="icon-btn" id="btn-theme" title="Toggle theme (T)">
+          <i data-lucide="moon"></i>
+        </button>
+        <button class="icon-btn" id="btn-settings" title="Settings">
+          <i data-lucide="settings"></i>
+        </button>
+        <button class="icon-btn" id="btn-shortcuts" title="Keyboard shortcuts (?)">
+          <i data-lucide="keyboard"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- LIVE TICKER -->
+    <div class="ticker" id="ticker">
+      <div class="ticker__label">
+        <i data-lucide="zap" class="ticker__label-icon"></i>
+        <span>BREAKING</span>
+      </div>
+      <div class="ticker__track">
+        <div class="ticker__content" id="ticker-content">
+          <span class="ticker__item ticker__item--placeholder">Initializing threat feeds...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS BAR -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-card" id="stat-total">
+        <div class="stat-card__icon stat-card__icon--total">
+          <i data-lucide="layers"></i>
+        </div>
+        <div class="stat-card__info">
+          <span class="stat-card__value" id="stat-total-value">—</span>
+          <span class="stat-card__label">Total</span>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-critical">
+        <div class="stat-card__icon stat-card__icon--critical">
+          <i data-lucide="shield-alert"></i>
+        </div>
+        <div class="stat-card__info">
+          <span class="stat-card__value" id="stat-critical-value">—</span>
+          <span class="stat-card__label">Critical</span>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-high">
+        <div class="stat-card__icon stat-card__icon--high">
+          <i data-lucide="alert-triangle"></i>
+        </div>
+        <div class="stat-card__info">
+          <span class="stat-card__value" id="stat-high-value">—</span>
+          <span class="stat-card__label">High</span>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-medium">
+        <div class="stat-card__icon stat-card__icon--medium">
+          <i data-lucide="alert-circle"></i>
+        </div>
+        <div class="stat-card__info">
+          <span class="stat-card__value" id="stat-medium-value">—</span>
+          <span class="stat-card__label">Medium</span>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-info">
+        <div class="stat-card__icon stat-card__icon--info">
+          <i data-lucide="info"></i>
+        </div>
+        <div class="stat-card__info">
+          <span class="stat-card__value" id="stat-info-value">—</span>
+          <span class="stat-card__label">Info</span>
+        </div>
+      </div>
+      <div class="stat-card" id="stat-sources">
+        <div class="stat-card__icon stat-card__icon--sources">
+          <i data-lucide="rss"></i>
+        </div>
+        <div class="stat-card__info">
+          <span class="stat-card__value" id="stat-sources-value">—</span>
+          <span class="stat-card__label">Sources</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTROLS BAR -->
+    <div class="controls" id="controls">
+      <div class="controls__tabs" id="category-tabs">
+        <button class="tab active" data-category="all">
+          <i data-lucide="layout-grid"></i> All
+        </button>
+        <button class="tab" data-category="news">
+          <i data-lucide="newspaper"></i> News
+        </button>
+        <button class="tab" data-category="vulnerability">
+          <i data-lucide="bug"></i> CVEs
+        </button>
+        <button class="tab" data-category="tool">
+          <i data-lucide="wrench"></i> Tools
+        </button>
+        <button class="tab" data-category="malware">
+          <i data-lucide="skull"></i> Malware
+        </button>
+        <button class="tab" data-category="breach">
+          <i data-lucide="unlock"></i> Breaches
+        </button>
+        <button class="tab" data-category="advisory">
+          <i data-lucide="shield-check"></i> Advisories
+        </button>
+      </div>
+      <div class="controls__filters">
+        <div class="filter-group">
+          <label class="filter-label" for="severity-filter">
+            <i data-lucide="filter"></i>
+          </label>
+          <select id="severity-filter" class="filter-select">
+            <option value="all">All Severity</option>
+            <option value="critical">🔴 Critical</option>
+            <option value="high">🟠 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="info">🔵 Info</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" for="time-filter">
+            <i data-lucide="clock"></i>
+          </label>
+          <select id="time-filter" class="filter-select">
+            <option value="all">All Time</option>
+            <option value="1h">Last Hour</option>
+            <option value="6h">Last 6 Hours</option>
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label" for="sort-filter">
+            <i data-lucide="arrow-up-down"></i>
+          </label>
+          <select id="sort-filter" class="filter-select">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="severity">By Severity</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <button class="icon-btn icon-btn--small" id="btn-view-cards" title="Card view">
+            <i data-lucide="layout-grid"></i>
+          </button>
+          <button class="icon-btn icon-btn--small" id="btn-view-list" title="List view">
+            <i data-lucide="list"></i>
+          </button>
+        </div>
+        <div class="countdown-wrapper" id="countdown-wrapper" title="Time until next refresh">
+          <svg class="countdown-ring" viewBox="0 0 40 40">
+            <circle class="countdown-ring__bg" cx="20" cy="20" r="17" />
+            <circle class="countdown-ring__progress" id="countdown-ring" cx="20" cy="20" r="17" />
+          </svg>
+          <span class="countdown-text" id="countdown-text">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOADING STATE -->
+    <div class="loading-state" id="loading-state" style="display:none;">
+      <div class="loading-spinner">
+        <div class="loading-spinner__ring"></div>
+        <i data-lucide="radar" class="loading-spinner__icon"></i>
+      </div>
+      <p class="loading-state__text">Scanning threat feeds...</p>
+      <div class="loading-sources" id="loading-sources"></div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="empty-state" id="empty-state" style="display:none;">
+      <i data-lucide="search-x" class="empty-state__icon"></i>
+      <h2 class="empty-state__title">No threats found</h2>
+      <p class="empty-state__text">Try adjusting your filters or search query.</p>
+    </div>
+
+    <!-- NEWS FEED GRID -->
+    <main class="feed" id="feed"></main>
+
+    <!-- LOAD MORE -->
+    <div class="load-more" id="load-more" style="display:none;">
+      <button class="btn btn--glass" id="btn-load-more">
+        <i data-lucide="chevrons-down"></i>
+        <span>Load More</span>
+      </button>
+      <span class="load-more__count" id="load-more-count"></span>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer" id="footer">
+      <div class="footer__left">
+        <span class="footer__status" id="sync-status">
+          <i data-lucide="loader" class="spin"></i> Initializing...
+        </span>
+      </div>
+      <div class="footer__center">
+        <span class="footer__sources" id="source-status"></span>
+      </div>
+      <div class="footer__right">
+        <span class="footer__version">CyberPulse v1.0</span>
+      </div>
+    </footer>
+
+  </div><!-- /.app -->
+
+  <!-- ============================================ -->
+  <!-- ARTICLE DETAIL MODAL                         -->
+  <!-- ============================================ -->
+  <div class="modal-overlay" id="article-modal" style="display:none;">
+    <div class="modal modal--article">
+      <div class="modal__header">
+        <h2 class="modal__title" id="article-modal-title">Article Title</h2>
+        <button class="icon-btn" id="article-modal-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal__meta" id="article-modal-meta"></div>
+      <div class="modal__body" id="article-modal-body"></div>
+      <div class="modal__actions" id="article-modal-actions"></div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SETTINGS MODAL                               -->
+  <!-- ============================================ -->
+  <div class="modal-overlay" id="settings-modal" style="display:none;">
+    <div class="modal modal--settings">
+      <div class="modal__header">
+        <h2 class="modal__title">
+          <i data-lucide="settings"></i> Settings
+        </h2>
+        <button class="icon-btn" id="settings-modal-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal__body">
+
+        <!-- Theme -->
+        <div class="settings-section">
+          <h3 class="settings-section__title">
+            <i data-lucide="palette"></i> Theme
+          </h3>
+          <div class="settings-row">
+            <div class="theme-options" id="theme-options">
+              <button class="theme-btn active" data-theme="dark">
+                <i data-lucide="moon"></i> Dark
+              </button>
+              <button class="theme-btn" data-theme="light">
+                <i data-lucide="sun"></i> Light
+              </button>
+              <button class="theme-btn" data-theme="hacker">
+                <i data-lucide="terminal"></i> Hacker
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Refresh Interval -->
+        <div class="settings-section">
+          <h3 class="settings-section__title">
+            <i data-lucide="timer"></i> Auto-Refresh Interval
+          </h3>
+          <div class="settings-row">
+            <select id="settings-refresh-interval" class="filter-select filter-select--wide">
+              <option value="900000">Every 15 minutes</option>
+              <option value="1800000">Every 30 minutes</option>
+              <option value="3600000" selected>Every 1 hour</option>
+              <option value="7200000">Every 2 hours</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Page Size -->
+        <div class="settings-section">
+          <h3 class="settings-section__title">
+            <i data-lucide="rows-3"></i> Articles Per Page
+          </h3>
+          <div class="settings-row">
+            <select id="settings-page-size" class="filter-select filter-select--wide">
+              <option value="10">10 articles</option>
+              <option value="20" selected>20 articles</option>
+              <option value="50">50 articles</option>
+              <option value="100">100 articles</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Feed Sources -->
+        <div class="settings-section">
+          <h3 class="settings-section__title">
+            <i data-lucide="rss"></i> Feed Sources
+          </h3>
+          <div class="settings-sources" id="settings-sources">
+            <!-- Dynamically generated -->
+          </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="settings-section">
+          <h3 class="settings-section__title">
+            <i data-lucide="bell"></i> Notifications
+          </h3>
+          <div class="settings-row">
+            <label class="toggle-label">
+              <span>Desktop notifications for critical alerts</span>
+              <input type="checkbox" id="settings-notifications" class="toggle-input" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Data Management -->
+        <div class="settings-section">
+          <h3 class="settings-section__title">
+            <i data-lucide="database"></i> Data
+          </h3>
+          <div class="settings-row settings-row--buttons">
+            <button class="btn btn--glass" id="btn-export-bookmarks">
+              <i data-lucide="download"></i> Export Bookmarks
+            </button>
+            <button class="btn btn--glass btn--danger" id="btn-clear-cache">
+              <i data-lucide="trash-2"></i> Clear Cache
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- KEYBOARD SHORTCUTS MODAL                     -->
+  <!-- ============================================ -->
+  <div class="modal-overlay" id="shortcuts-modal" style="display:none;">
+    <div class="modal modal--shortcuts">
+      <div class="modal__header">
+        <h2 class="modal__title">
+          <i data-lucide="keyboard"></i> Keyboard Shortcuts
+        </h2>
+        <button class="icon-btn" id="shortcuts-modal-close">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal__body">
+        <div class="shortcuts-grid">
+          <div class="shortcut"><kbd>J</kbd><span>Next article</span></div>
+          <div class="shortcut"><kbd>K</kbd><span>Previous article</span></div>
+          <div class="shortcut"><kbd>O</kbd> / <kbd>Enter</kbd><span>Open article</span></div>
+          <div class="shortcut"><kbd>S</kbd><span>Bookmark article</span></div>
+          <div class="shortcut"><kbd>R</kbd><span>Refresh feeds</span></div>
+          <div class="shortcut"><kbd>/</kbd><span>Focus search</span></div>
+          <div class="shortcut"><kbd>T</kbd><span>Toggle theme</span></div>
+          <div class="shortcut"><kbd>Esc</kbd><span>Close modal</span></div>
+          <div class="shortcut"><kbd>1</kbd>–<kbd>7</kbd><span>Switch category tab</span></div>
+          <div class="shortcut"><kbd>?</kbd><span>Show shortcuts</span></div>
+          <div class="shortcut"><kbd>B</kbd><span>Show bookmarks</span></div>
+          <div class="shortcut"><kbd>G</kbd><span>Go to top</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- APP SCRIPT -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
