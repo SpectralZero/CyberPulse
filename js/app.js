@@ -953,14 +953,116 @@ class App {
     // Generate settings sources list
     this._renderSettingsSources();
 
-    // Initial fetch
-    await this.refreshFeeds();
+    // ── Instant cache load: show cached data immediately, then refresh silently ──
+    const cachedArticles = this._loadAllCached();
+    if (cachedArticles.length > 0) {
+      // Render cached data instantly — no loading screen
+      this.allArticles = cachedArticles;
+      this.allArticles.forEach(a => {
+        a.isRead = this.storage.isRead(a.id);
+        a.isBookmarked = this.storage.isBookmarked(a.id);
+      });
+      this._applyFiltersAndRender();
+      this._updateStats();
+      this._updateTicker();
+      this._updateSyncStatus();
+
+      // Then refresh silently in the background
+      this._silentRefresh();
+    } else {
+      // First-ever visit: no cache at all → show loading screen
+      await this.refreshFeeds();
+    }
 
     // Start auto-refresh
     this._startAutoRefresh();
   }
 
-  // ── Feed Fetching ──────────────────────────────────────────
+  // ── Load all cached articles (instant, no network) ─────────
+  _loadAllCached() {
+    const enabledFeeds = CONFIG.feeds.filter(f =>
+      f.enabled && !this.settings.disabledFeeds.includes(f.id)
+    );
+
+    let allArticles = [];
+    for (const source of enabledFeeds) {
+      const cached = this.storage.getCachedFeed(source.id);
+      // Also accept stale cache for instant display
+      const stale = !cached ? this.storage._get(`cache_${source.id}`, null) : null;
+      const articles = cached || (stale ? stale.articles : null);
+      if (articles && articles.length > 0) {
+        const hydrated = articles.map(a => {
+          if (a.pubDate && !(a.pubDate instanceof Date)) a.pubDate = new Date(a.pubDate);
+          // Ensure source info exists
+          if (!a.source) {
+            a.source = { id: source.id, name: source.name, color: source.color, icon: source.icon };
+          }
+          return a;
+        });
+        allArticles = allArticles.concat(hydrated);
+        this.feedEngine.sourceStatus[source.id] = cached ? 'cached' : 'stale';
+      }
+    }
+
+    // Deduplicate
+    const seen = new Map();
+    allArticles = allArticles.filter(article => {
+      const key = article.title.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 60);
+      if (seen.has(key)) return false;
+      seen.set(key, true);
+      return true;
+    });
+
+    // Sort newest first
+    allArticles.sort((a, b) => b.pubDate - a.pubDate);
+    return allArticles;
+  }
+
+  // ── Silent background refresh (no loading screen) ──────────
+  async _silentRefresh() {
+    if (this.isRefreshing) return;
+    this.isRefreshing = true;
+    this._updateRefreshButton(true);
+
+    const enabledFeeds = CONFIG.feeds.filter(f =>
+      f.enabled && !this.settings.disabledFeeds.includes(f.id)
+    );
+
+    try {
+      const previousCriticalIds = new Set(
+        this.allArticles.filter(a => a.severity === 'critical').map(a => a.id)
+      );
+
+      this.allArticles = await this.feedEngine.fetchAll(enabledFeeds);
+
+      this.allArticles.forEach(a => {
+        a.isRead = this.storage.isRead(a.id);
+        a.isBookmarked = this.storage.isBookmarked(a.id);
+      });
+
+      // Notify on new critical articles
+      if (this.settings.notifications) {
+        this.allArticles
+          .filter(a => a.severity === 'critical' && !previousCriticalIds.has(a.id))
+          .slice(0, 3)
+          .forEach(a => this.notifications.notify(a));
+      }
+
+      this._applyFiltersAndRender();
+      this._updateStats();
+      this._updateTicker();
+      this._updateSyncStatus();
+
+      this.toast.show(`Synced ${this.allArticles.length} articles from ${enabledFeeds.length} sources`, 'success');
+    } catch (e) {
+      console.error('Background refresh failed:', e);
+    } finally {
+      this.isRefreshing = false;
+      this._updateRefreshButton(false);
+    }
+  }
+
+  // ── Feed Fetching (with loading screen — for first load & manual refresh) ──
   async refreshFeeds() {
     if (this.isRefreshing) return;
     this.isRefreshing = true;
