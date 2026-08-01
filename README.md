@@ -2,7 +2,7 @@
 
 A zero-cost, open-source threat intelligence dashboard that aggregates top IT security news, CVEs, exploits, and security tool releases from 14+ sources in real-time. Built for Red & Blue team operators.
 
-**[🚀 Live Demo →](https://yourusername.github.io/cyberpulse/)**
+**[🚀 Live Demo →](https://spectralzero.github.io/cyberpulse/)**
 
 ![CyberPulse Dashboard](https://img.shields.io/badge/CyberPulse-v1.0-00e5ff?style=for-the-badge&logo=shield&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
